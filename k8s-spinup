@@ -1,0 +1,413 @@
+Install Multi-Master Kubernetes Cluster with Kubeadm:
+
+
+Structure:
+K8s Master1:   172.16.73.51
+K8s Master2:   172.16.73.52
+K8s Master3:   172.16.73.53
+K8s Worker1:  172.16.73.54
+K8s Worker2:  172.16.73.55
+K8s Worker3:  172.16.73.56
+K8s Worker4:  172.16.73.66
+K8s Worker5:  172.16.73.67
+K8s ETCD1:   172.16.73.57
+K8s ETCD2:   172.16.73.58
+K8s ETCD3:   172.16.73.59
+K8s HA1:        172.16.73.60
+K8s HA2:        172.16.73.61
+
+
+Prerequisite:
+
+$ apt update
+$ apt -y install vim git curl wget curl apt-transport-https gnupg2 software-properties-common ca-certificates
+
+Turn off swap:
+
+$ sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+$ swapoff -a
+
+Install Container Run Time (Docker):[m1,m2,m3,w1,w2,w3]
+
+$ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+$ add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+$ apt update
+$ apt install -y containerd.io docker-ce docker-ce-cli
+
+For configuration CGroup on Docker:[m1,m2,m3,w1,w2,w3]
+
+$ vim /etc/docker/daemon.json
+{
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m"
+  },
+  "storage-driver": "overlay2"
+}
+$systemctl daemon-reload && systemctl restart docker
+
+Install Kube’s:[m1,m2,m3,w1,w2,w3]
+$ curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+$ echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+$ apt update
+$ apt -y install kubelet kubeadm kubectl
+$ kubeadm version
+
+Provision Haproxies:[ha1,ha2]
+
+$ add-apt-repository ppa:vbernat/haproxy-2.2
+$ apt -y install haproxy
+$ vim /etc/haproxy/haproxy.cfg
+
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    chroot /var/lib/haproxy
+    stats socket /run/haproxy/admin.sock mode 660 level admin expose-fd listeners
+    stats timeout 30s
+    user haproxy
+    group haproxy
+    daemon
+
+    # Default SSL material locations
+    ca-base /etc/ssl/certs
+    crt-base /etc/ssl/private
+
+    # See: https://ssl-config.mozilla.org/#server=haproxy&server-version=2.0.3&config=intermediate
+    ssl-default-bind-ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384
+    ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256
+    ssl-default-bind-options ssl-min-ver TLSv1.2 no-tls-tickets
+
+frontend kubernetes
+    bind 0.0.0.0:6443
+    option tcplog
+    mode tcp
+    default_backend kubernetes-master-nodes
+
+backend kubernetes-master-nodes
+    mode tcp
+    balance roundrobin
+    option tcp-check
+    server k8sm1 172.16.73.51:6443 check fall 3 rise 2
+    server k8sm2 172.16.73.52:6443 check fall 3 rise 2
+    server k8sm3 172.16.73.53:6443 check fall 3 rise 2
+
+$ systemctl restart haproxy
+
+Install Keepalived:[ha1,ha2]
+
+$ apt -y install keepalived
+$ vim /etc/keepalived/keepalived.conf
+
+# Settings for notifications
+global_defs {
+    script_user root
+   enable_script_security
+}
+
+# Define the script used to check if haproxy is still working
+vrrp_script chk_haproxy {
+    script "/usr/bin/killall -0 haproxy"
+    interval 2
+    weight 2
+}
+
+# Configuation for the virtual interface
+vrrp_instance VI_1 {
+    interface ens160
+    state Master        # set this to BACKUP on the other machine
+    priority 101       # set this to 100 on the other machine
+    virtual_router_id 56
+
+
+    authentication {
+        auth_type AH
+        auth_pass mypassword1      # Set this to some secret phrase
+    }
+
+    # The virtual ip address shared between the two loadbalancers
+    virtual_ipaddress {
+        172.16.73.63
+    }
+
+    # Use the script above to check if we should fail over
+    track_script {
+        chk_haproxy
+    }
+}
+
+$ systemctl restart keepalived
+$ ping 172.16.73.63
+
+Note. If Keepalive does not work after restart due to virtual router id issue, increase the id number till 255 on both HA’s.
+
+Generate CA and CSR:[m1]
+
+$ wget https://pkg.cfssl.org/R1.2/cfssl_linux-amd64 && mv cfssl_linux-amd64 /usr/local/bin/cfssl && chmod +x /usr/local/bin/cfssl
+$ wget https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64 && mv cfssljson_linux-amd64 /usr/local/bin/cfssljson && chmod +x /usr/local/bin/cfssljson
+
+Create cert authority config:[m1]
+
+$ mkdir ~/cert && cd ~/cert
+$ vim ca-config.json
+
+{
+ "signing": {
+   "default": {
+   "expiry": "87600h"
+ },
+   "profiles": {
+     "kubernetes": {
+       "usages": ["signing", "key encipherment", "server auth", "client auth"],
+       "expiry": "87600h"
+   }
+  }
+ }
+}
+
+Create cert signing request:[m1]
+
+$ vim ca-csr.json
+
+{
+ "CN": "Kubernetes",
+  "key": {
+   "algo": "rsa",
+   "size": 2048
+  },
+  "names": [
+  {
+    "C": "IR",
+    "L": "Example",
+    "O": "Kubernetes",
+    "OU": "CA",
+    "ST": "example"
+  }
+ ]
+}
+
+Create cert signing request for kubernetes:[m1]
+
+$ vim kubernetes-csr.json
+
+{
+  "CN": "kubernetes",
+     "key": {
+        "algo": "rsa",
+        "size": 2048
+     },
+     "names": [
+       {
+         "C": "IR",
+         "L": "Example",
+         "O": "Kubernetes",
+         "OU": "Kubernetes",
+         "ST": "Example"
+       }
+     ]
+}
+
+Generate Certificate and Private Key:[m1]
+
+$ cfssl gencert -initca ca-csr.json | cfssljson -bare ca
+$ vim gencert.sh
+
+cfssl gencert \
+-ca=ca.pem \
+-ca-key=ca-key.pem \
+-config=ca-config.json \
+-hostname=172.16.73.51,172.16.73.52,172.16.73.53,172.16.73.63,172.16.73.57,172.16.73.58,172.16.73.59,127.0.0.1,kubernetes.default \
+-profile=kubernetes kubernetes-csr.json | \
+cfssljson -bare kubernetes
+
+$ bash gencert.sh
+$ mkdir ssl && cp ca.pem kubernetes*.pem ssl/
+
+Copy Certificates and Private key to each node:[m1]
+
+$ mkdir /opt/certs
+$ cp ssl/* /opt/certs/
+$ scp ssl/* [m2,m3]:/opt/certs/
+
+Configure ETCD Nodes:[etcd1,etcd2,etcd3]
+
+$ mkdir -p /etc/etcd/ && mkdir -p /var/lib/etcd/
+
+Copy Certificates and Private key to etcd nodes:[m1]
+
+$ scp ssl/* [etcd1,etcd2,etcd3]:/etc/etcd/
+
+Download and Copy ETCD:[etcd1,etcd2,etcd3]
+
+$ wget https://github.com/etcd-io/etcd/releases/download/v3.3.13/etcd-v3.3.13-linux-amd64.tar.gz
+$ tar -xzvf etcd-v3.3.13-linux-amd64.tar.gz
+$ cp etcd-v3.3.13-linux-amd64/etcdctl /usr/local/bin
+$ cp etcd-v3.3.13-linux-amd64/etcd /usr/local/bin
+$ chmod +x /usr/local/bin/etcd*
+
+Create ETCD Config File:[etcd1,etcd2,etcd3]
+
+[etcd1]$ vim /etc/etcd/etcd.conf
+
+ETCD_NAME=node-1
+ETCD_LISTEN_PEER_URLS="https://172.16.73.57:2380"
+ETCD_LISTEN_CLIENT_URLS="https://172.16.73.57:2379"
+ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
+ETCD_INITIAL_CLUSTER="node-1=https://172.16.73.57:2380,node-2=https://172.16.73.58:2380,node-3=https://172.16.73.59:2380"
+ETCD_INITIAL_ADVERTISE_PEER_URLS="https://172.16.73.57:2380"
+ETCD_ADVERTISE_CLIENT_URLS="https://172.16.73.57:2379"
+ETCD_TRUSTED_CA_FILE="/etc/etcd/ca.pem"
+ETCD_CERT_FILE="/etc/etcd/kubernetes.pem"
+ETCD_KEY_FILE="/etc/etcd/kubernetes-key.pem"
+ETCD_PEER_CLIENT_CERT_AUTH=true
+ETCD_PEER_TRUSTED_CA_FILE="/etc/etcd/ca.pem"
+ETCD_PEER_KEY_FILE="/etc/etcd/kubernetes-key.pem"
+ETCD_PEER_CERT_FILE="/etc/etcd/kubernetes.pem"
+ETCD_DATA_DIR="/var/lib/etcd"
+
+[etcd2]$ vim /etc/etcd/etcd.conf
+
+ETCD_NAME=node-2
+ETCD_LISTEN_PEER_URLS="https://172.16.73.58:2380"
+ETCD_LISTEN_CLIENT_URLS="https://172.16.73.58:2379"
+ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
+ETCD_INITIAL_CLUSTER="node-1=https://172.16.73.57:2380,node-2=https://172.16.73.58:2380,node-3=https://172.16.73.59:2380"
+ETCD_INITIAL_ADVERTISE_PEER_URLS="https://172.16.73.58:2380"
+ETCD_ADVERTISE_CLIENT_URLS="https://172.16.73.58:2379"
+ETCD_TRUSTED_CA_FILE="/etc/etcd/ca.pem"
+ETCD_CERT_FILE="/etc/etcd/kubernetes.pem"
+ETCD_KEY_FILE="/etc/etcd/kubernetes-key.pem"
+ETCD_PEER_CLIENT_CERT_AUTH=true
+ETCD_PEER_TRUSTED_CA_FILE="/etc/etcd/ca.pem"
+ETCD_PEER_KEY_FILE="/etc/etcd/kubernetes-key.pem"
+ETCD_PEER_CERT_FILE="/etc/etcd/kubernetes.pem"
+ETCD_DATA_DIR="/var/lib/etcd"
+
+[etcd3]$ vim /etc/etcd/etcd.conf
+
+ETCD_NAME=node-3
+ETCD_LISTEN_PEER_URLS="https://172.16.73.59:2380"
+ETCD_LISTEN_CLIENT_URLS="https://172.16.73.59:2379"
+ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
+ETCD_INITIAL_CLUSTER="node-1=https://172.16.73.57:2380,node-2=https://172.16.73.58:2380,node-3=https://172.16.73.59:2380"
+ETCD_INITIAL_ADVERTISE_PEER_URLS="https://172.16.73.59:2380"
+ETCD_ADVERTISE_CLIENT_URLS="https://172.16.73.59:2379"
+ETCD_TRUSTED_CA_FILE="/etc/etcd/ca.pem"
+ETCD_CERT_FILE="/etc/etcd/kubernetes.pem"
+ETCD_KEY_FILE="/etc/etcd/kubernetes-key.pem"
+ETCD_PEER_CLIENT_CERT_AUTH=true
+ETCD_PEER_TRUSTED_CA_FILE="/etc/etcd/ca.pem"
+ETCD_PEER_KEY_FILE="/etc/etcd/kubernetes-key.pem"
+ETCD_PEER_CERT_FILE="/etc/etcd/kubernetes.pem"
+ETCD_DATA_DIR="/var/lib/etcd"
+
+[etcd1,2,3]
+
+$ vim /etc/systemd/system/etcd.service
+
+[Unit]
+Description=etcd key-value store
+Documentation=https://github.com/etcd-io/etcd
+After=network.target
+[Service]
+Type=notify
+EnvironmentFile=/etc/etcd/etcd.conf
+ExecStart=/usr/local/bin/etcd
+Restart=always
+RestartSec=10s
+LimitNOFILE=40000
+[Install]
+WantedBy=multi-user.target
+
+$ systemctl daemon-reload && systemctl enable etcd.service && systemctl restart etcd.service
+
+Check ETCD Cluster:[etcd1]
+
+$ vim ~/etcd-test.sh
+etcdctl --endpoints https://172.16.73.59:2379 --cert-file /etc/etcd/kubernetes.pem --ca-file /etc/etcd/ca.pem --key-file /etc/etcd/kubernetes-key.pem member list
+
+$ bash ~/etcd-test.sh
+
+Setup Master nodes:[m1,m2,m3]
+
+$ mkdir /etc/kubernetes/ca
+$ mkdir /etc/kubernetes/pki
+$ cp /opt/certs/* /etc/kubernetes/ca/
+
+Cluster Configuration:[m1]
+
+$ vim /etc/kubernetes/manifests/master.yml
+
+apiVersion: kubeadm.k8s.io/v1beta2
+kind: ClusterConfiguration
+kubernetesVersion: stable
+controlPlaneEndpoint: "172.16.73.63:6443"
+etcd:
+  external:
+    endpoints:
+      - https://172.16.73.57:2379
+      - https://172.16.73.58:2379
+      - https://172.16.73.59:2379
+    caFile: /etc/kubernetes/ca/ca.pem
+    certFile: /etc/kubernetes/ca/kubernetes.pem
+    keyFile: /etc/kubernetes/ca/kubernetes-key.pem
+networking:
+  podSubnet: 10.10.0.0/16
+
+$ kubeadm init --config=/etc/kubernetes/manifests/master.yml
+
+worker token: kubeadm join 172.16.73.51:6443 --token sr4l2l.2kvot0pfalh5o4ik --discovery-token-ca-cert-hash sha256:c692fb047e15883b575bd6710779dc2c5af8073f7cab460abd181fd3ddb29a18
+
+control plane token: kubeadm join 172.16.73.51:6443 –token sr4l2l.2kvot0pfalh5o4ik --discovery-token-ca-cert-hash sha256:c692fb047e15883b575bd6710779dc2c5af8073f7cab460abd181fd3ddb29a18 --control-plane
+
+Copy PKIs to other Master Nodes:[m1]
+
+$ scp /etc/kubernetes/pki/ca* [m2,m3]:/etc/kubernetes/pki/
+$ scp /etc/kubernetes/pki/kubernetes* [m2,m3]:/etc/kubernetes/pki/
+$ scp /etc/kubernetes/pki/sa* [m2,m3]:/etc/kubernetes/pki/
+$ scp /etc/kubernetes/pki/front* [m2,m3]:/etc/kubernetes/pki/
+
+Join other Master Nodes:[m2,m3]
+
+$ kubeadm join 172.16.73.51:6443 --token sr4l2l.2kvot0pfalh5o4ik --discovery-token-ca-cert-hash sha256:c692fb047e15883b575bd6710779dc2c5af8073f7cab460abd181fd3ddb29a18 --control-plane
+
+Use Kubectl:[m1,m2,m3]
+
+$ mkdir -p $HOME/.kube
+$ cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+$ chown $(id -u):$(id -g) $HOME/.kube/config
+
+$ kubectl cluster-info
+
+Kubernetes master is running at…
+
+Deploy Network for Cluster:[m1]
+
+$ kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+
+Wait till all containers become up and running:[m1]
+
+$ watch kubectl get pods --all-namespaces
+
+Add Worker Nodes:[w1,w2,w3]
+
+$ kubeadm join 172.16.73.51:6443 --token sr4l2l.2kvot0pfalh5o4ik --discovery-token-ca-cert-hash sha256:c692fb047e15883b575bd6710779dc2c5af8073f7cab460abd181fd3ddb29a18
+
+Check Cluster Nodes:[m1]
+
+$ kubectl get nodes
+
+
+
+Note. In this document we used Docker as a Container Run-time, Kubernetes offers Containerd instead of Docker.
+
+Note. During join nodes in case of failure use kubeadm reset on that node to renew state of it.
+
+Note. In this document we used calico network, the other network method also available (Flannel, Romana, Weave-net, …)
+
+References:
+
+https://computingforgeeks.com/deploy-kubernetes-cluster-on-ubuntu-with-kubeadm/
+https://kubernetes.io/docs/tasks/administer-cluster/certificates/
+https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/
