@@ -1,0 +1,31 @@
+Pull an Image from a Private Registry
+Create secret first:
+$ kubectl create secret docker-registry nameofsecret --dockerserver=docker.registry.com --docker-username=user --docker-password=pass -n
+namespace
+Check secret on namespace:
+$ kubectl get secrets -n namespace
+$ kubectl get secret nameofsecret --output="jsonpath={.data.\.dockerconfigjson}" |
+base64 --decode
+user:pass
+Put secret on deployment manifest:
+...
+spec:
+ replicas: 1
+ selector:
+ matchLabels:
+ app: someapp
+ template:
+ metadata:
+ labels:
+ app: someapp
+ spec:
+ securityContext:
+ runAsUser: 1000
+ imagePullSecrets:
+ - name: nameofsecret
+ containers:
+ - env:
+...
+Deploy, You’re done.
+Reference:
+https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
