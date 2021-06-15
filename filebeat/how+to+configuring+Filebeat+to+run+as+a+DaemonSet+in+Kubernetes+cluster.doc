@@ -1,0 +1,480 @@
+Date: Tue, 15 Jun 2021 11:49:28 +0430 (IRDT)
+Message-ID: <411102144.192.1623741568349@localhost>
+Subject: Exported From Confluence
+MIME-Version: 1.0
+Content-Type: multipart/related; 
+	boundary="----=_Part_191_643974129.1623741568347"
+
+------=_Part_191_643974129.1623741568347
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+Content-Location: file:///C:/exported.html
+
+<html xmlns:o=3D'urn:schemas-microsoft-com:office:office'
+      xmlns:w=3D'urn:schemas-microsoft-com:office:word'
+      xmlns:v=3D'urn:schemas-microsoft-com:vml'
+      xmlns=3D'urn:w3-org-ns:HTML'>
+<head>
+    <meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dutf-8=
+">
+    <title>how to configuring Filebeat to run as a DaemonSet in Kubernetes =
+cluster</title>
+    <!--[if gte mso 9]>
+    <xml>
+        <o:OfficeDocumentSettings>
+            <o:TargetScreenSize>1024x640</o:TargetScreenSize>
+            <o:PixelsPerInch>72</o:PixelsPerInch>
+            <o:AllowPNG/>
+        </o:OfficeDocumentSettings>
+        <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>90</w:Zoom>
+            <w:DoNotOptimizeForBrowser/>
+        </w:WordDocument>
+    </xml>
+    <![endif]-->
+    <style>
+                <!--
+        @page Section1 {
+            size: 8.5in 11.0in;
+            margin: 1.0in;
+            mso-header-margin: .5in;
+            mso-footer-margin: .5in;
+            mso-paper-source: 0;
+        }
+
+        table {
+            border: solid 1px;
+            border-collapse: collapse;
+        }
+
+        table td, table th {
+            border: solid 1px;
+            padding: 5px;
+        }
+
+        td {
+            page-break-inside: avoid;
+        }
+
+        tr {
+            page-break-after: avoid;
+        }
+
+        div.Section1 {
+            page: Section1;
+        }
+
+        /* Confluence print stylesheet. Common to all themes for print medi=
+a */
+/* Full of !important until we improve batching for print CSS */
+
+@media print {
+    #main {
+        padding-bottom: 1em !important; /* The default padding of 6em is to=
+o much for printouts */
+    }
+
+    body {
+        font-family: Arial, Helvetica, FreeSans, sans-serif;
+        font-size: 10pt;
+        line-height: 1.2;
+    }
+
+    body, #full-height-container, #main, #page, #content, .has-personal-sid=
+ebar #content {
+        background: #fff !important;
+        color: #000 !important;
+        border: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: block !important;
+    }
+
+    a, a:link, a:visited, a:focus, a:hover, a:active {
+        color: #000;
+    }
+
+    #content h1,
+    #content h2,
+    #content h3,
+    #content h4,
+    #content h5,
+    #content h6 {
+        font-family: Arial, Helvetica, FreeSans, sans-serif;
+        page-break-after: avoid;
+    }
+
+    pre {
+        font-family: Monaco, "Courier New", monospace;
+    }
+
+    #header,
+    .aui-header-inner,
+    #navigation,
+    #sidebar,
+    .sidebar,
+    #personal-info-sidebar,
+    .ia-fixed-sidebar,
+    .page-actions,
+    .navmenu,
+    .ajs-menu-bar,
+    .noprint,
+    .inline-control-link,
+    .inline-control-link a,
+    a.show-labels-editor,
+    .global-comment-actions,
+    .comment-actions,
+    .quick-comment-container,
+    #addcomment {
+        display: none !important;
+    }
+
+    /* CONF-28544 cannot print multiple pages in IE */
+    #splitter-content {
+        position: relative !important;
+    }
+
+    .comment .date::before {
+        content: none !important; /* remove middot for print view */
+    }
+
+    h1.pagetitle img {
+        height: auto;
+        width: auto;
+    }
+
+    .print-only {
+        display: block;
+    }
+
+    #footer {
+        position: relative !important; /* CONF-17506 Place the footer at en=
+d of the content */
+        margin: 0;
+        padding: 0;
+        background: none;
+        clear: both;
+    }
+
+    #poweredby {
+        border-top: none;
+        background: none;
+    }
+
+    #poweredby li.print-only {
+        display: list-item;
+        font-style: italic;
+    }
+
+    #poweredby li.noprint {
+        display: none;
+    }
+
+    /* no width controls in print */
+    .wiki-content .table-wrap,
+    .wiki-content p,
+    .panel .codeContent,
+    .panel .codeContent pre,
+    .image-wrap {
+        overflow: visible !important;
+    }
+
+    /* TODO - should this work? */
+    #children-section,
+    #comments-section .comment,
+    #comments-section .comment .comment-body,
+    #comments-section .comment .comment-content,
+    #comments-section .comment p {
+        page-break-inside: avoid;
+    }
+
+    #page-children a {
+        text-decoration: none;
+    }
+
+    /**
+     hide twixies
+
+     the specificity here is a hack because print styles
+     are getting loaded before the base styles. */
+    #comments-section.pageSection .section-header,
+    #comments-section.pageSection .section-title,
+    #children-section.pageSection .section-header,
+    #children-section.pageSection .section-title,
+    .children-show-hide {
+        padding-left: 0;
+        margin-left: 0;
+    }
+
+    .children-show-hide.icon {
+        display: none;
+    }
+
+    /* personal sidebar */
+    .has-personal-sidebar #content {
+        margin-right: 0px;
+    }
+
+    .has-personal-sidebar #content .pageSection {
+        margin-right: 0px;
+    }
+
+    .no-print, .no-print * {
+        display: none !important;
+    }
+}
+-->
+    </style>
+</head>
+<body>
+    <h1>how to configuring Filebeat to run as a DaemonSet in Kubernetes clu=
+ster</h1>
+    <div class=3D"Section1">
+        <p style=3D"text-align: right;">=D8=AF=D8=B1 =D8=A7=DB=8C=D9=86 =D9=
+=85=D8=B3=D8=AA=D9=86=D8=AF =D9=82=D8=B5=D8=AF =D8=AF=D8=A7=D8=B1=DB=8C=D9=
+=85 =D9=86=D8=AD=D9=88=D9=87 =D8=B1=D8=A7=D9=87 =D8=A7=D9=86=D8=AF=D8=A7=D8=
+=B2=DB=8C =D9=81=D8=A7=DB=8C=D9=84 =D8=A8=DB=8C=D8=AA =D8=A8=D9=87 =D8=B5=
+=D9=88=D8=B1=D8=AA =D8=AF=DB=8C=D9=85=D9=86 =D8=B3=D8=AA =D8=AF=D8=B1 =DA=
+=A9=D9=84=D8=A7=D8=B3=D8=AA=D8=B1 =DA=A9=D9=88=D8=A8=D8=B1=D9=86=D8=AA=DB=
+=8C=D8=B2 =D8=B1=D8=A7 =D8=B4=D8=B1=D8=AD =D8=AF=D9=87=DB=8C=D9=85.</p>
+<p style=3D"text-align: right;">=D8=AF=D8=B1 =D8=A7=DB=8C=D9=86 =D8=A8=D8=
+=AE=D8=B4 =D8=A8=D8=A7 =D8=A7=DB=8C=D9=86 =D9=81=D8=B1=D8=B6 =D9=BE=DB=8C=
+=D8=B4 =D9=85=DB=8C =D8=B1=D9=88=DB=8C=D9=85 =DA=A9=D9=87 =DA=A9=D9=84=D8=
+=A7=D8=B3=D8=AA=D8=B1 =DA=A9=D9=88=D8=A8=D8=B1=D9=86=D8=AA=DB=8C=D8=B2 =D8=
+=A7=D8=B2 =D9=82=D8=A8=D9=84 =D8=B1=D8=A7=D9=87 =D8=A7=D9=86=D8=AF=D8=A7=D8=
+=B2=DB=8C =D8=B4=D8=AF=D9=87 =D9=88 =D9=82=D8=B5=D8=AF =D8=AF=D8=A7=D8=B1=
+=DB=8C=D8=AF =D8=A8=D9=87 =D9=85=D9=86=D8=B8=D9=88=D8=B1 =D8=A7=D9=86=D8=AA=
+=D9=82=D8=A7=D9=84 =D9=84=D8=A7=DA=AF =D9=85=D8=B1=D8=A8=D9=88=D8=B7 =D8=A8=
+=D9=87 =DA=A9=D8=A7=D9=86=D8=AA=DB=8C=D9=86=D8=AA=D8=B1=D9=87=D8=A7 =D8=A7=
+=D8=B2 =DB=8C=DA=A9 =D8=B3=DB=8C=D8=B3=D8=AA=D9=85 =D9=84=D8=A7=DA=AF =D8=
+=B4=DB=8C=D9=BE=DB=8C=D9=86=DA=AF =DA=A9=D9=87 =D8=AF=D8=B1 =D8=A7=DB=8C=D9=
+=86=D8=AC=D8=A7 =D9=81=D8=A7=DB=8C=D9=84 =D8=A8=DB=8C=D8=AA =D8=A7=D8=B3=D8=
+=AA =D8=A7=D8=B3=D8=AA=D9=81=D8=A7=D8=AF=D9=87 =D9=86=D9=85=D8=A7=DB=8C=DB=
+=8C=D8=AF.=D8=A8=D8=B1=D8=A7=DB=8C =D8=A7=D9=86=D8=AC=D8=A7=D9=85 =D8=A7=DB=
+=8C=D9=86 =D8=A7=D9=85=D8=B1 =D9=84=D8=A7=D8=B2=D9=85 =D8=A7=D8=B3=D8=AA =
+=DA=A9=D9=87 =D9=86=D8=B3=D8=A8=D8=AA =D8=A8=D9=87 =D8=B1=D8=A7=D9=87 =D8=
+=A7=D9=86=D8=AF=D8=A7=D8=B2=DB=8C =D9=88 =DA=A9=D8=A7=D9=86=D9=81=DB=8C=DA=
+=AF =DA=A9=D8=A7=D9=85=D9=BE=D9=88=D9=86=D9=86=D8=AA =D9=87=D8=A7=DB=8C =D9=
+=85=D9=88=D8=B1=D8=AF =D9=86=DB=8C=D8=A7=D8=B2 =D8=A8=D8=B1=D8=A7=DB=8C =D8=
+=A7=DB=8C=D9=86 =D8=A7=D9=85=D8=B1 =D8=A7=D9=82=D8=AF=D8=A7=D9=85 =D9=86=D9=
+=85=D8=A7=DB=8C=DB=8C=D8=AF. =D8=A8=D8=B1=D8=A7=DB=8C =D8=B1=D8=A7=D8=AD=D8=
+=AA=DB=8C =DA=A9=D8=A7=D8=B1 =D8=AA=D9=85=D8=A7=D9=85=DB=8C =D8=A7=DB=8C=D9=
+=86 =D8=AA=D9=86=D8=B8=DB=8C=D9=85=D8=A7=D8=AA =D8=B1=D8=A7 =D8=AF=D8=B1 =
+=DB=8C=DA=A9 =D9=81=D8=A7=DB=8C=D9=84 =D9=85=D9=86=DB=8C =D9=81=D8=B3=D8=AA=
+ =D8=A8=D8=A7 =DA=A9=D8=A7=D9=86=D9=81=DB=8C=DA=AF =D9=87=D8=A7=DB=8C =D9=
+=85=D8=AF =D9=86=D8=B8=D8=B1 =D8=AC=D9=85=D8=B9 =D8=A2=D9=88=D8=B1=DB=8C =
+=DA=A9=D8=B1=D8=AF=DB=8C=D9=85 =D9=88 =D8=B3=D9=BE=D8=B3 =D8=A8=D8=A7 =D8=
+=A7=D8=B3=D8=AA=D9=81=D8=A7=D8=AF=D9=87 =D8=A7=D8=B2 =DA=A9=DB=8C=D9=88=D8=
+=A8 =D8=B3=DB=8C =D8=AA=D9=84 =D8=A8=D9=87 =D8=B1=D8=A7=D8=AD=D8=AA=DB=8C =
+=D9=86=D8=B3=D8=A8=D8=AA =D8=A8=D9=87 =D8=B1=D8=A7=D9=87 =D8=A7=D9=86=D8=AF=
+=D8=A7=D8=B2=DB=8C =D8=A7=D9=86 =D8=A7=D9=82=D8=AF=D8=A7=D9=85 =D9=85=DB=8C=
+ =D9=86=D9=85=D8=A7=DB=8C=DB=8C=D9=85</p>
+<p style=3D"text-align: right;">=D8=A8=D8=B1=D8=A7=DB=8C =D8=B4=D8=B1=D9=88=
+=D8=B9 =DA=A9=D8=A7=D8=B1 =D8=A7=D8=A8=D8=AA=D8=AF=D8=A7 =DB=8C=DA=A9 =D8=
+=AF=D8=A7=DB=8C=D8=B1=DA=A9=D8=AA=D9=88=D8=B1=DB=8C =D8=B3=D8=A7=D8=AE=D8=
+=AA=D9=87 =D9=88 =D8=B3=D9=BE=D8=B3 =D9=81=D8=A7=DB=8C=D9=84 =D9=85=D9=86=
+=DB=8C =D9=81=D8=B3=D8=AA =D8=B1=D8=A7 =D8=A8=D8=A7 =DA=A9=D8=A7=D9=86=D9=
+=81=DB=8C=DA=AF =D9=85=D8=AF =D9=86=D8=B8=D8=B1 =D8=AF=D8=B1 =D8=A2=D9=86 =
+=D8=A7=DB=8C=D8=AC=D8=A7=D8=AF =D9=85=DB=8C =DA=A9=D9=86=DB=8C=D9=85..</p>
+<p><br></p>
+<div class=3D"code panel pdl" style=3D"border-width: 1px;">
+<div class=3D"codeContent panelContent pdl">=20
+<pre class=3D"syntaxhighlighter-pre" data-syntaxhighlighter-params=3D"brush=
+: bash; gutter: true; theme: RDark" data-theme=3D"RDark"></pre>=20
+</div>
+</div>
+<div class=3D"code panel pdl" style=3D"border-width: 1px;">
+<div class=3D"codeContent panelContent pdl">=20
+<pre class=3D"syntaxhighlighter-pre" data-syntaxhighlighter-params=3D"brush=
+: bash; gutter: true; theme: RDark" data-theme=3D"RDark">apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: filebeat
+  namespace: logging
+  labels:
+    k8s-app: filebeat
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: filebeat
+  labels:
+    k8s-app: filebeat
+rules:
+- apiGroups: ["*"] # "" indicates the core API group
+  resources:
+  - namespaces
+  - pods
+  - nodes
+  verbs:
+  - get
+  - watch
+  - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: filebeat
+subjects:
+- kind: ServiceAccount
+  name: filebeat
+  namespace: logging
+roleRef:
+  kind: ClusterRole
+  name: filebeat
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  namespace: logging
+  labels:
+    k8s-app: filebeat
+data:
+  filebeat.yml: |-
+    filebeat.config:
+      inputs:
+        # Mounted `filebeat-inputs` configmap:
+        path: ${path.config}/inputs.d/*.yml
+        # Reload inputs configs as they change:
+        reload.enabled: false
+      modules:
+        path: ${path.config}/modules.d/*.yml
+        # Reload module configs as they change:
+        reload.enabled: false
+    output.logstash:
+      hosts: ['192.168.110.174:6050']
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-inputs
+  namespace: logging
+  labels:
+    k8s-app: filebeat
+data:
+  kubernetes.yml: |-
+    - type: docker
+      containers.ids:
+      - "*"
+      processors:
+        - add_kubernetes_metadata:
+            in_cluster: true
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  namespace: logging
+  labels:
+    k8s-app: filebeat
+spec:
+  selector:
+    matchLabels:
+      k8s-app: filebeat
+  template:
+    metadata:
+      labels:
+        k8s-app: filebeat
+
+    spec:
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      serviceAccountName: filebeat
+      terminationGracePeriodSeconds: 30
+      containers:
+      - name: filebeat
+        image: docker.elastic.co/beats/filebeat:7.10.0
+        args: [
+          "-c", "/etc/filebeat.yml",
+          "-e",
+        ]
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - name: config
+          mountPath: /etc/filebeat.yml
+          readOnly: true
+          subPath: filebeat.yml
+        - name: inputs
+          mountPath: /usr/share/filebeat/inputs.d
+          readOnly: true
+        - name: data
+          mountPath: /usr/share/filebeat/data
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          defaultMode: 0600
+          name: filebeat-config
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      - name: inputs
+        configMap:
+          defaultMode: 0600
+          name: filebeat-inputs
+      - name: data
+        emptyDir: {}
+
+</pre>=20
+</div>
+</div>
+<p><br></p>
+<p style=3D"text-align: right;"><br></p>
+<p style=3D"text-align: right;">=D8=A8=D8=B9=D8=AF =D8=A7=D8=B2 =D8=B0=D8=
+=AE=DB=8C=D8=B1=D9=87 =D9=81=D8=A7=DB=8C=D9=84 =D9=81=D9=88=D9=82 =D8=A7=D8=
+=A8=D8=AA=D8=AF=D8=A7&nbsp; =D8=A8=D9=87 =D9=85=D9=86=D8=B8=D9=88=D8=B1 =D8=
+=B1=D8=A7=D8=AD=D8=AA=DB=8C =DA=A9=D8=A7=D8=B1 =DB=8C=DA=A9 =D9=86=DB=8C=D9=
+=85 =D8=A7=D8=B3=D9=BE=DB=8C=D8=B3 =D9=85=D8=AC=D8=B2=D8=A7 =D8=A8=D9=87 =
+=D8=B9=D9=86=D9=88=D8=A7=D9=86 =D9=86=D9=85=D9=88=D9=86=D9=87 =D8=A8=D8=A7 =
+=D9=86=D8=A7=D9=85 =D9=84=D8=A7=DA=AF=DB=8C=D9=86=DA=AF =D8=A7=DB=8C=D8=AC=
+=D8=A7=D8=AF =D9=85=DB=8C =DA=A9=D9=86=DB=8C=D9=85 =D9=88 =D8=B3=D9=BE=D8=
+=B3 =DA=A9=D8=A7=D9=85=D9=BE=D9=88=D9=86=D9=86=D8=AA =D9=87=D8=A7=DB=8C =D9=
+=85=D9=88=D8=AC=D9=88=D8=AF =D8=AF=D8=B1 =D9=81=D8=A7=DB=8C=D9=84 =D9=81=D9=
+=88=D9=82 =D8=B1=D8=A7 =D8=A8=D8=B1 =D8=B1=D9=88=DB=8C =D8=A2=D9=86 =D8=A8=
+=D8=A7=D9=84=D8=A7 =D9=85=DB=8C =D8=A2=D9=88=D8=B1=DB=8C=D9=85</p>
+<p style=3D"text-align: right;"><br></p>
+<p style=3D"text-align: right;">.</p>
+<p><br></p>
+<div class=3D"code panel pdl" style=3D"border-width: 1px;">
+<div class=3D"codeContent panelContent pdl">=20
+<pre class=3D"syntaxhighlighter-pre" data-syntaxhighlighter-params=3D"brush=
+: bash; gutter: true; theme: RDark" data-theme=3D"RDark"></pre>=20
+</div>
+</div>
+<p style=3D"text-align: right;">=D8=B3=D9=BE=D8=B3 =D8=AF=D8=B1 =D9=87=D9=
+=85=D8=A7=D9=86 =D9=85=D8=B3=DB=8C=D8=B1=DB=8C =DA=A9=D9=87 =D9=81=D8=A7=DB=
+=8C=D9=84 =D9=85=D9=86=DB=8C =D9=81=D8=B3=D8=AA =D9=82=D8=B1=D8=A7=D8=B1 =
+=D8=AF=D8=A7=D8=B1=D8=AF =D8=AF=D8=B3=D8=AA=D9=88=D8=B1 =D8=B2=DB=8C=D8=B1 =
+=D8=B1=D8=A7 =D8=AC=D9=87=D8=AA =D8=AF=DB=8C=D9=BE=D9=84=D9=88=DB=8C =D9=86=
+=D9=85=D9=88=D8=AF=D9=86 =DA=A9=D8=A7=D9=85=D9=BE=D9=88=D9=86=D9=86=D8=AA =
+=D9=87=D8=A7 =D8=A7=D8=AC=D8=B1=D8=A7 =D9=85=DB=8C =DA=A9=D9=86=DB=8C=D9=85=
+.</p>
+<p><br></p>
+<div class=3D"code panel pdl" style=3D"border-width: 1px;">
+<div class=3D"codeContent panelContent pdl">=20
+<pre class=3D"syntaxhighlighter-pre" data-syntaxhighlighter-params=3D"brush=
+: bash; gutter: true; theme: RDark" data-theme=3D"RDark">kubectl apply -f f=
+ilebeat.yaml -n logging</pre>=20
+</div>
+</div>
+<p style=3D"text-align: right;">=D8=A8=D8=A7 =D8=A7=D8=AC=D8=B1=D8=A7=DB=8C=
+ =D8=AF=D8=B3=D8=AA=D9=88=D8=B1 =D9=81=D9=88=D9=82 =D8=AF=D8=B1 =D8=B5=D9=
+=88=D8=B1=D8=AA =D8=B9=D8=AF=D9=85 =D8=A8=D8=B1=D9=88=D8=B2 =D9=85=D8=B4=DA=
+=A9=D9=84 =D8=AF=D8=B1 =DA=A9=D8=A7=D9=86=D9=81=DB=8C=DA=AF =D9=81=D8=A7=DB=
+=8C=D9=84 =D8=AA=D9=85=D8=A7=D9=85 =DA=A9=D8=A7=D9=85=D9=BE=D9=88=D9=86=D9=
+=86=D8=AA =D9=87=D8=A7=DB=8C =D9=85=D8=AF =D9=86=D8=B8=D8=B1 =D8=A7=DB=8C=
+=D8=AC=D8=A7=D8=AF =D9=85=DB=8C =D8=B4=D9=88=D9=86=D8=AF.</p>
+    </div>
+</body>
+</html>
+------=_Part_191_643974129.1623741568347--
