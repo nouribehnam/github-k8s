@@ -1,0 +1,162 @@
+User restriction to specific namespace on K8s
+===========
+Create user on host:
+$ adduser nikbakht
+Create account for specific namespace:
+
+$ vim ~/manifests/serviceaccount/serviceaccount.yml
+ 
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+    name: dev
+    namespace: dev
+ 
+$ kubectl create -f ~/manifests/serviceaccount/serviceaccount.yml
+
+Note. All of these actions only apply on “dev” namespace.
+
+
+Create role for account:
+
+$ vim ~/manifests/serviceaccount/role.yml
+ 
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+    name: dev-role
+    namespace: dev
+rules:
+- apiGroups: ["", "extensions", "apps"]
+    resources: ["*"]
+    verbs: ["*"]
+- apiGroups: ["batch"]
+    resources:
+    - jobs
+    - cronjobs
+    verbs: ["*"]
+ 
+$ kubectl create -f ~/manifests/serviceaccount/role.yml
+
+Note. ApiGroups refers to different group of K8s api’s
+
+Note. Resources refers to K8s resources such as: deployment, daemonSet, ….
+
+Note. Verbs refers to K8s apiServer actions such as: get, create, delete, ….
+
+
+Create role binding for role:
+
+$ vim ~/manifests/serviceaccount/rolebinding.yml
+ 
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+    name: dev-access
+    namespace: dev
+subjects:
+- kind: ServiceAccount
+    name: dev
+    namespace: dev
+roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: dev-role
+ 
+$ kubectl create -f ~/manifests/serviceaccount/rolebinding.yml
+
+Check steps:
+
+$ kubectl get sa -n dev
+ 
+NAME           SECRETS         AGE
+default           1            195d
+dev               1            97m
+gitlab-secret     2            195d
+navabrain         1            144d
+ 
+$ kubectl describe sa dev -n dev
+ 
+Name:               dev
+Namespace:          dev
+Labels:             <none>
+Annotations:        <none>
+Image pull secrets: <none>
+Mountable secrets:  dev-token-zvp44
+Tokens:             dev-token-zvp44
+Events:             <none>
+
+Note. We need name of secret for next few steps.
+
+
+For creating user config file we need 3 arguments:
+
+
+1- Server: The apiServer URL of K8s cluster, here is https://192.168.10.35:6443
+
+
+2- certificate-authority-data/client-key-data: Both of these arguments will be provided by the following command.
+
+$ kubectl -n ${NAMESPACE} get secret `kubectl -n ${NAMESPACE} get secret | (grep ${K8S_USER} || echo "$_") | grep service-account-token | awk '{print $1}'` -o "jsonpath={.data['ca\.crt']}"
+ 
+Note. For better demonstration:
+ 
+$ kubectl get secrets dev-token-zvp44 -n dev -o "jsonpath={.data['ca\.crt']}"
+ 
+ 
+LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJd01UQXlNakF4TkRZeE5Gb1hEVE13TVRBeU1EQXhORFl4TkZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTHBhClNWbUZoaGNHcHZYd29qbUs1TUtrT09vWmdWWTJ5dnlEdExyaEZqWFBKWVpQRXUzVnNKZ1FVa2RyNFVDQXFDbmMKRUxSS1lieU9Cek5RNkpBaFlKVnJtSGx6SCs4L0ZsRXNIanpOWjl6cDErTzV1NHdlcW1MZzVIQ0hSUzJZS3FtZgpMWlBybXIxTHVwWkNXMWhvV1c4ckU4Z2tQbGpoVWhDVGZvT2pWZEFhUnpiL3R2YXh4M1J2azJYZXlock15bXcxCmZjbXBLS2lwMW9vL0pwMldPVGtIaE1hdmtDZ0RKb2swMTZjSytWSGpoNXZraTRidXZTVlEvZDVPTnZON0VkdGIKU2dPb0loZTNNRkVlUUJXS2tvYWo1dUxKbjRpcENQbTdDc0lEUUtabmVHWis1ZmpCTzZKcTdFNmUrcnhHZm8xdgpNK1R6d05sbW5sWXpDZ2RlR29NQ0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZCTGRGMXBHQktmSGZLTmJSOERvaUxyZEZONTFNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFDVTlWTElGd0FYSHVpYm5PZFJsZWw2eGc4OUlXUXRBdllxUzRWVk1FYTYxOUUyN2JQNApxcDN2RW5zb2VCUVErRU0vR2RDcHBZZW5ZV3dwZ2QrUzNKellQSFFvQjVEdzN5WlRqVGNpTi9CeWUvbjJVTFFRCnNQaUhyaE14NmxvNnlhR1B2RHd5SDk3eStkd3RFeHJ4N0trZUp4UnZRR0Rxem9Zdi9KWGNIdUZLL0ttdE1uRmUKYkpyUHdXbVUvcFVvOFkxMTBiYTZRWDNaMkZiQlowWitmZ2h2VnFoNHc5T21PSkg5cE1HS1QxZTQ3SXJUcjZlUQpGdXBYRmhLZFYzVUlhcVYybmc0WG9KVktLUFVlNlhCZHF3SElOT2t6dElEeGE1bmtuK0o3TE5MUExjUFo3ZVBiCmRWdHpXSWhTNnJQTkJBS2hmd283aVZENGZKd1hqTnY2YnlCUgotLS0tLUVORCBDRVJUSUZJ
+
+3- token: It’s achievable via below command.
+
+$ kubectl -n ${NAMESPACE} describe secret $(kubectl -n ${NAMESPACE} get secret | (grep ${K8S_USER} || echo "$_") | awk '{print $1}') | grep token: | awk '{print $2}'\n
+ 
+Note. For better demonstration:
+ 
+$ kubectl describe secrets dev-token-zvp44 -n dev | grep token: | awk '{print $2}'
+ 
+ 
+eyJhbGciOiJSUzI1NiIsImtpZCI6IlR5VGs2aTRtT1ZfeVJIUVRDajlYaUZ3THc3dTFnUHF3MDN1b3FaRWt3bk0ifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZXYiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlY3JldC5uYW1lIjoiZGV2LXRva2VuLXp2cDQ0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImRldiIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6ImFhYTMwMDc2LTIwNjctNGU0OS1hODZiLTI4NGIzNGQ1M2MxZCIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZXY6ZGV2In0.kYQX-8y-SkMQ35co9xoev09E5gOBGhjPD9tnXzUzgEsInoy4IAueJJr-fdKqPwS7K4dfsIm06XZ8PKpsiBnAe7giOzA9KuE4-DIt0HSvoleVYtb1V6p0aHeoy3m1_xQJ957MG2AYXcp06Kd3ENl1djZik1vQcb5d2zuDDAckYQaVDlDHipGjAPYYtCgoMljosc1y2xcEYIayprsgVVliLN72mLFI3NPjQ4wisFl_gXAe_hafv1QL2XAbAm4UVZRvzYg7ZOK1X_W8kMYimiRpxj2c-PNB4_u3XOmSZ2qNwT3zXvrIeTeoG-tPfouT9Jp3cRFgOIsM_8eWWiR3D9qqRQ
+
+Create config file as below:
+
+$ mkdir /home/nikbakht/.kube/
+$ vim /home/nikbakht/.kube/config
+ 
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJd01UQXlNakF4TkRZeE5Gb1hEVE13TVRBeU1EQXhORFl4TkZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTHBhClNWbUZoaGNHcHZYd29qbUs1TUtrT09vWmdWWTJ5dnlEdExyaEZqWFBKWVpQRXUzVnNKZ1FVa2RyNFVDQXFDbmMKRUxSS1lieU9Cek5RNkpBaFlKVnJtSGx6SCs4L0ZsRXNIanpOWjl6cDErTzV1NHdlcW1MZzVIQ0hSUzJZS3FtZgpMWlBybXIxTHVwWkNXMWhvV1c4ckU4Z2tQbGpoVWhDVGZvT2pWZEFhUnpiL3R2YXh4M1J2azJYZXlock15bXcxCmZjbXBLS2lwMW9vL0pwMldPVGtIaE1hdmtDZ0RKb2swMTZjSytWSGpoNXZraTRidXZTVlEvZDVPTnZON0VkdGIKU2dPb0loZTNNRkVlUUJXS2tvYWo1dUxKbjRpcENQbTdDc0lEUUtabmVHWis1ZmpCTzZKcTdFNmUrcnhHZm8xdgpNK1R6d05sbW5sWXpDZ2RlR29NQ0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZCTGRGMXBHQktmSGZLTmJSOERvaUxyZEZONTFNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFDVTlWTElGd0FYSHVpYm5PZFJsZWw2eGc4OUlXUXRBdllxUzRWVk1FYTYxOUUyN2JQNApxcDN2RW5zb2VCUVErRU0vR2RDcHBZZW5ZV3dwZ2QrUzNKellQSFFvQjVEdzN5WlRqVGNpTi9CeWUvbjJVTFFRCnNQaUhyaE14NmxvNnlhR1B2RHd5SDk3eStkd3RFeHJ4N0trZUp4UnZRR0Rxem9Zdi9KWGNIdUZLL0ttdE1uRmUKYkpyUHdXbVUvcFVvOFkxMTBiYTZRWDNaMkZiQlowWitmZ2h2VnFoNHc5T21PSkg5cE1HS1QxZTQ3SXJUcjZlUQpGdXBYRmhLZFYzVUlhcVYybmc0WG9KVktLUFVlNlhCZHF3SElOT2t6dElEeGE1bmtuK0o3TE5MUExjUFo3ZVBiCmRWdHpXSWhTNnJQTkJBS2hmd283aVZENGZKd1hqTnY2YnlCUgotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    server: https://192.168.10.35:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: nikbakht
+  name: nikbakht@kubernetes
+current-context: nikbakht@kubernetes
+kind: Config
+preferences: {}
+users:
+- name: nikbakht
+  user:
+    token: eyJhbGciOiJSUzI1NiIsImtpZCI6IlR5VGs2aTRtT1ZfeVJIUVRDajlYaUZ3THc3dTFnUHF3MDN1b3FaRWt3bk0ifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZXYiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlY3JldC5uYW1lIjoiZGV2LXRva2VuLXp2cDQ0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImRldiIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6ImFhYTMwMDc2LTIwNjctNGU0OS1hODZiLTI4NGIzNGQ1M2MxZCIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZXY6ZGV2In0.kYQX-8y-SkMQ35co9xoev09E5gOBGhjPD9tnXzUzgEsInoy4IAueJJr-fdKqPwS7K4dfsIm06XZ8PKpsiBnAe7giOzA9KuE4-DIt0HSvoleVYtb1V6p0aHeoy3m1_xQJ957MG2AYXcp06Kd3ENl1djZik1vQcb5d2zuDDAckYQaVDlDHipGjAPYYtCgoMljosc1y2xcEYIayprsgVVliLN72mLFI3NPjQ4wisFl_gXAe_hafv1QL2XAbAm4UVZRvzYg7ZOK1X_W8kMYimiRpxj2c-PNB4_u3XOmSZ2qNwT3zXvrIeTeoG-tPfouT9Jp3cRFgOIsM_8eWWiR3D9qqRQ
+client-key-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJd01UQXlNakF4TkRZeE5Gb1hEVE13TVRBeU1EQXhORFl4TkZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTHBhClNWbUZoaGNHcHZYd29qbUs1TUtrT09vWmdWWTJ5dnlEdExyaEZqWFBKWVpQRXUzVnNKZ1FVa2RyNFVDQXFDbmMKRUxSS1lieU9Cek5RNkpBaFlKVnJtSGx6SCs4L0ZsRXNIanpOWjl6cDErTzV1NHdlcW1MZzVIQ0hSUzJZS3FtZgpMWlBybXIxTHVwWkNXMWhvV1c4ckU4Z2tQbGpoVWhDVGZvT2pWZEFhUnpiL3R2YXh4M1J2azJYZXlock15bXcxCmZjbXBLS2lwMW9vL0pwMldPVGtIaE1hdmtDZ0RKb2swMTZjSytWSGpoNXZraTRidXZTVlEvZDVPTnZON0VkdGIKU2dPb0loZTNNRkVlUUJXS2tvYWo1dUxKbjRpcENQbTdDc0lEUUtabmVHWis1ZmpCTzZKcTdFNmUrcnhHZm8xdgpNK1R6d05sbW5sWXpDZ2RlR29NQ0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZCTGRGMXBHQktmSGZLTmJSOERvaUxyZEZONTFNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFDVTlWTElGd0FYSHVpYm5PZFJsZWw2eGc4OUlXUXRBdllxUzRWVk1FYTYxOUUyN2JQNApxcDN2RW5zb2VCUVErRU0vR2RDcHBZZW5ZV3dwZ2QrUzNKellQSFFvQjVEdzN5WlRqVGNpTi9CeWUvbjJVTFFRCnNQaUhyaE14NmxvNnlhR1B2RHd5SDk3eStkd3RFeHJ4N0trZUp4UnZRR0Rxem9Zdi9KWGNIdUZLL0ttdE1uRmUKYkpyUHdXbVUvcFVvOFkxMTBiYTZRWDNaMkZiQlowWitmZ2h2VnFoNHc5T21PSkg5cE1HS1QxZTQ3SXJUcjZlUQpGdXBYRmhLZFYzVUlhcVYybmc0WG9KVktLUFVlNlhCZHF3SElOT2t6dElEeGE1bmtuK0o3TE5MUExjUFo3ZVBiCmRWdHpXSWhTNnJQTkJBS2hmd283aVZENGZKd1hqTnY2YnlCUgotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+
+Check the permission of file and direcory:
+
+$ chown -R nikbakht:nikbakht /home/nikbakht/.kube/
+$ chown nikbakht:nikbakht /home/nikbakht/.kube/config
+
+Switch user and check the access:
+
+$ su nikbakht
+$ kubectl get po -n dev
+ 
+NAME                           READY               STATUS               RESTARTS               AGE
+cassandra-0                     2/2                Running                  8                  69d
+dev-archiver-b4c897966-ggs8w    2/2                Running                  5                  54d
+dev-booking-6dc7d9875-8t69s     1/1                Running                  13                 100d
+ 
+$ kubectl get po -n stg
+ 
+Error from server (Forbidden): pods is forbidden: User "system:serviceaccount:dev:dev" cannot list resource "pods" in API group "" in the namespace "stg"
