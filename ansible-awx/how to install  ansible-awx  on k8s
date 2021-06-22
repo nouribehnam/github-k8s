@@ -1,0 +1,149 @@
+#creat directory on k8s master server
+
+
+/home/nava/projects/all/awx/dev/...
+
+#download link
+	
+wget https://raw.githubusercontent.com/ansible/awx-operator/0.9.0/deploy/awx-operator.yaml
+#run command
+
+kubectl apply -f awx-operator.yaml
+kubectl create namespace awx
+#creat new file (for example dev.yml) and insert these line to it
+
+---
+apiVersion: awx.ansible.com/v1beta1
+kind: AWX
+metadata:
+  name: awx
+  namespace: awx
+spec:
+  tower_ingress_type: Ingress
+  tower_postgres_storage_class: manual
+  tower_hostname: ansible
+  
+#now check event and see that some object not create (such as postgres)
+# so we creat directory (for exapmle postgres) and insert manifest below to create postgres sepratly
+#vi postgres-configmap.yaml
+	
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: awx
+  labels:
+    app: postgres
+data:
+  POSTGRES_DB: postgresdb
+  POSTGRES_USER: postgresadmin
+  POSTGRES_PASSWORD: admin123
+	
+#vi postgres-storage.yaml
+	
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: postgres-pv-volume
+  labels:
+    type: local
+    app: postgres
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/repo_1/ansible"
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: postgres-pv-claim
+  labels:
+    app: postgres
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+      
+# vi postgres-deployment.yaml
+	
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: awx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:10.4
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: postgres-config
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgredb
+      volumes:
+        - name: postgredb
+          persistentVolumeClaim:
+            claimName: postgres-pv-claim
+	
+#vi postgres-service.yaml
+
+	
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: awx
+  labels:
+    app: postgres
+spec:
+  ports:
+   - port: 5432
+     targetPort: 5432
+  selector:
+   app: postgres
+
+
+
+#source to create postgres on k8s
+
+https://severalnines.com/database-blog/using-kubernetes-deploy-postgresql
+
+# next we must link awx to my new postgres (that we created) 
+# must replace connection db by base64 format
+# example command that we use
+
+kubectl edit secrets/awx-postgres-configuration -n awx
+# if evry thing good we must access the service , so use below command to see service url
+
+kubectl get svc -n awx
+
+NAME TYPE CLUSTER-IP EXTERNAL-IP PORT(S) AGE
+
+awx-postgres ClusterIP None <none> 5432/TCP 25h
+
+awx-service NodePort 10.101.141.13 <none> 80:32396/TCP 25h
+
+postgres ClusterIP 10.106.203.2 <none> 5432/TCP 119m
+
+# you can see awx-service up by nodeport type , so we can access webui by nodeip:port on cluster
+# so we can see information to conect webui by secret that create
